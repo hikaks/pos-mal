@@ -1,7 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import {
   Card,
   CardContent,
@@ -9,58 +10,115 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import DashboardLayout from "@/components/dashboard-layout";
-import { mockProducts, mockTransactions } from "@/lib/data";
+import { getTransactions } from "@/lib/firebase/transactions";
+import type { TransactionDetail, Product } from "@/lib/data";
+import { getProducts } from "@/lib/firebase/products";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, BrainCircuit } from "lucide-react";
+import { analyzeSalesTrends, type SalesAnalysis } from "@/ai/flows/analyze-sales-trends";
+import { Badge } from "@/components/ui/badge";
 
-const dailySalesData = [
-    { name: "Espresso Machine", sales: 4 },
-    { name: "Coffee Beans", sales: 12 },
-    { name: "Headphones", sales: 2 },
-    { name: "Yoga Mat", sales: 7 },
-    { name: "Blender", sales: 5 },
-];
-
-const monthlySalesData = [
-    { name: "Espresso Machine", sales: 50 },
-    { name: "Coffee Beans", sales: 250 },
-    { name: "Headphones", sales: 80 },
-    { name: "Yoga Mat", sales: 120 },
-    { name: "Blender", sales: 95 },
-    { name: "Smart Watch", sales: 70 },
-    { name: "Wallet", sales: 150 },
-];
-
+type SalesData = {
+  name: string;
+  total: number;
+};
 
 export default function ReportsPage() {
-    
-  const totalRevenue = mockTransactions.reduce((sum, t) => sum + t.total, 0);
-  const bestSellingProduct = mockProducts.reduce((prev, current) => (prev.stock < current.stock) ? prev : current);
+  const [transactions, setTransactions] = useState<TransactionDetail[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<SalesAnalysis | null>(null);
+  const { toast } = useToast();
 
-  const renderChart = (data: any[]) => (
+  React.useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [fetchedTransactions, fetchedProducts] = await Promise.all([
+          getTransactions(),
+          getProducts(),
+        ]);
+        setTransactions(fetchedTransactions);
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch data for reports.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [toast]);
+
+  const handleAnalyzeSales = async () => {
+    if (!transactions.length) {
+      toast({
+        title: "No Data",
+        description: "Not enough transaction data to perform analysis.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsAnalyzing(true);
+    setAnalysis(null);
+    try {
+      const result = await analyzeSalesTrends({ transactions });
+      setAnalysis(result);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "AI Analysis Failed",
+        description: "Could not analyze sales trends. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const salesByProduct = React.useMemo(() => {
+    const salesMap: { [key: string]: number } = {};
+    transactions.forEach((t) => {
+      t.items.forEach((item) => {
+        salesMap[item.name] = (salesMap[item.name] || 0) + item.price * item.quantity;
+      });
+    });
+    return Object.entries(salesMap)
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10); // Top 10 products
+  }, [transactions]);
+
+  const totalRevenue = transactions.reduce((sum, t) => sum + t.total, 0);
+  const totalSales = transactions.length;
+  const bestSellingProduct = salesByProduct[0];
+
+  const renderChart = (data: SalesData[]) => (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
         <XAxis
           dataKey="name"
-          stroke="#888888"
+          stroke="hsl(var(--muted-foreground))"
           fontSize={12}
           tickLine={false}
           axisLine={false}
           angle={-45}
           textAnchor="end"
-          height={60}
+          height={80}
         />
         <YAxis
-          stroke="#888888"
+          stroke="hsl(var(--muted-foreground))"
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `${value}`}
+          tickFormatter={(value) => `$${value}`}
         />
         <Tooltip
             contentStyle={{ 
@@ -68,127 +126,124 @@ export default function ReportsPage() {
                 border: "1px solid hsl(var(--border))",
                 borderRadius: "var(--radius)"
             }}
+            cursor={{fill: "hsl(var(--muted))"}}
         />
-        <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
 
   return (
     <DashboardLayout>
-      <Tabs defaultValue="monthly">
-        <div className="flex items-center">
-          <TabsList>
-            <TabsTrigger value="daily">Daily</TabsTrigger>
-            <TabsTrigger value="monthly">Monthly</TabsTrigger>
-          </TabsList>
+       {isLoading ? (
+        <div className="flex justify-center items-center h-[80vh]">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
         </div>
-        <TabsContent value="daily">
-          <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Today's Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold font-headline">$4,231.89</div>
-                <p className="text-xs text-muted-foreground">
-                  +20.1% from yesterday
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Today's Sales
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold font-headline">+45</div>
-                <p className="text-xs text-muted-foreground">
-                  +12 from yesterday
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="mt-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">Today's Top Selling Products</CardTitle>
+      ) : (
+        <div className="space-y-6">
+            <div className="flex items-center">
+                <h1 className="text-2xl font-headline">Sales Reports</h1>
+                <div className="ml-auto">
+                    <Button onClick={handleAnalyzeSales} disabled={isAnalyzing}>
+                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <BrainCircuit className="mr-2 h-4 w-4"/>}
+                        {isAnalyzing ? "Analyzing..." : "Get AI Insights"}
+                    </Button>
+                </div>
+            </div>
+
+            {isAnalyzing && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>AI Sales Analysis</CardTitle>
+                        <CardDescription>Our AI is analyzing your sales data to uncover trends and predictions.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-center items-center h-48">
+                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </CardContent>
+                </Card>
+            )}
+
+            {analysis && (
+                 <Card className="bg-secondary border-primary/50">
+                    <CardHeader>
+                        <CardTitle className="font-headline text-primary flex items-center gap-2"><BrainCircuit/> AI Sales Analysis & Predictions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <h3 className="font-semibold">Sales Prediction</h3>
+                            <p className="text-sm text-muted-foreground">{analysis.salesPrediction}</p>
+                        </div>
+                        <div className="space-y-2">
+                             <h3 className="font-semibold">Trend Analysis</h3>
+                            <p className="text-sm text-muted-foreground">{analysis.trendAnalysis}</p>
+                        </div>
+                        <div className="space-y-2">
+                             <h3 className="font-semibold">Peak Sales Time</h3>
+                            <p className="text-sm text-muted-foreground">{analysis.peakSalesTime}</p>
+                        </div>
+                        <div className="space-y-2 col-span-full">
+                            <h3 className="font-semibold">Top Performing Categories</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {analysis.topPerformingCategories.map(cat => <Badge key={cat} variant="default">{cat}</Badge>)}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+                <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                    Total Revenue
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {renderChart(dailySalesData)}
+                    <div className="text-2xl font-bold font-headline">${totalRevenue.toFixed(2)}</div>
+                    <p className="text-xs text-muted-foreground">
+                    From {totalSales} transactions
+                    </p>
                 </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        <TabsContent value="monthly">
-          <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold font-headline">${totalRevenue.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">
-                  +20.1% from last month
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Subscriptions
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold font-headline">+2350</div>
-                <p className="text-xs text-muted-foreground">
-                  +180.1% from last month
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Sales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold font-headline">+12,234</div>
-                <p className="text-xs text-muted-foreground">
-                  +19% from last month
-                </p>
-              </CardContent>
-            </Card>
-             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Best Seller</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold font-headline">{bestSellingProduct.name}</div>
-                <p className="text-xs text-muted-foreground">
-                  Top product this month
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-           <div className="mt-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">Monthly Sales Overview</CardTitle>
-                     <CardDescription>
-                        An overview of product sales for the current month.
-                    </CardDescription>
+                </Card>
+                <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                    Total Sales
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {renderChart(monthlySalesData)}
+                    <div className="text-2xl font-bold font-headline">+{totalSales}</div>
+                    <p className="text-xs text-muted-foreground">
+                    Number of transactions recorded
+                    </p>
                 </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+                </Card>
+                <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Best Seller</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold font-headline">{bestSellingProduct?.name || "N/A"}</div>
+                    <p className="text-xs text-muted-foreground">
+                    Top product by revenue
+                    </p>
+                </CardContent>
+                </Card>
+            </div>
+            <div className="mt-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline">Top Selling Products by Revenue</CardTitle>
+                        <CardDescription>An overview of the top 10 products generating the most revenue.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {salesByProduct.length > 0 ? renderChart(salesByProduct) : <p className="text-center text-muted-foreground py-12">No sales data available to display chart.</p>}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
+

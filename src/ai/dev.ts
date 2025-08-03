@@ -3,3 +3,4 @@ config();
 
 import '@/ai/flows/analyze-customer-habits.ts';
 import '@/ai/flows/suggest-product-description.ts';
+import '@/ai/flows/analyze-sales-trends.ts';
