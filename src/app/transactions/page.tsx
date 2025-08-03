@@ -62,9 +62,8 @@ export default function TransactionsPage() {
   }, [toast]);
   
   const parseDate = (dateStr: string | undefined): Date => {
-    if (!dateStr || typeof dateStr !== 'string') return new Date(0);
+    if (!dateStr || typeof dateStr !== 'string' || !dateStr.includes('/')) return new Date(0);
     try {
-        // Updated format to match what's stored
         const parsed = parse(dateStr, 'dd/MM/yyyy HH:mm', new Date());
         if (isNaN(parsed.getTime())) return new Date(0);
         return parsed;
@@ -94,9 +93,9 @@ export default function TransactionsPage() {
         
         // Check against multiple fields
         return (
-          (transaction.id?.toLowerCase().includes(lowercasedFilter)) ||
-          (transaction.date?.toString().toLowerCase().includes(lowercasedFilter)) ||
-          (transaction.paymentMethod?.toLowerCase().includes(lowercasedFilter)) ||
+          (transaction.id && transaction.id.toLowerCase().includes(lowercasedFilter)) ||
+          (transaction.date && transaction.date.toString().toLowerCase().includes(lowercasedFilter)) ||
+          (transaction.paymentMethod && transaction.paymentMethod.toLowerCase().includes(lowercasedFilter)) ||
           transaction.total.toString().toLowerCase().includes(lowercasedFilter) ||
           transaction.items.some(item => item.name.toLowerCase().includes(lowercasedFilter))
         );
@@ -121,8 +120,8 @@ export default function TransactionsPage() {
         'Tax': t.taxAmount,
         'Total': t.total,
         'Payment Method': t.paymentMethod,
-        'Cash Received': t.cashReceived ?? 'N/A',
-        'Change': t.change ?? 'N/A',
+        'Cash Received': t.paymentMethod === 'cash' ? t.cashReceived : 'N/A',
+        'Change': t.paymentMethod === 'cash' ? t.change : 'N/A',
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -301,3 +300,5 @@ export default function TransactionsPage() {
     </DashboardLayout>
   );
 }
+
+    
