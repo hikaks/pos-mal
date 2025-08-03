@@ -64,6 +64,7 @@ export default function TransactionsPage() {
   const parseDate = (dateStr: string | undefined): Date => {
     if (!dateStr || typeof dateStr !== 'string') return new Date(0);
     try {
+        // Updated format to match what's stored
         const parsed = parse(dateStr, 'dd/MM/yyyy HH:mm', new Date());
         if (isNaN(parsed.getTime())) return new Date(0);
         return parsed;
@@ -82,8 +83,9 @@ export default function TransactionsPage() {
           const transactionDate = parseDate(transaction.date);
           if (isNaN(transactionDate.getTime())) return false;
           // Set hours to end of day for 'to' date to include all transactions on that day
-          dateRange.to.setHours(23, 59, 59, 999);
-          return transactionDate >= dateRange.from && transactionDate <= dateRange.to;
+          const toDate = new Date(dateRange.to);
+          toDate.setHours(23, 59, 59, 999);
+          return transactionDate >= dateRange.from && transactionDate <= toDate;
         }
         return true;
       })
@@ -114,9 +116,13 @@ export default function TransactionsPage() {
     const dataToExport = filteredTransactions.map(t => ({
         'Transaction ID': t.id,
         'Date': t.date,
+        'Items': t.items.map(i => `${i.name} (x${i.quantity})`).join(', '),
+        'Subtotal': t.subtotal,
+        'Tax': t.taxAmount,
         'Total': t.total,
         'Payment Method': t.paymentMethod,
-        'Items': t.items.map(i => `${i.name} (x${i.quantity})`).join(', ')
+        'Cash Received': t.cashReceived ?? 'N/A',
+        'Change': t.change ?? 'N/A',
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
