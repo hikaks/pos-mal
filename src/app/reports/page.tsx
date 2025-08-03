@@ -25,11 +25,11 @@ type SalesData = {
 };
 
 export default function ReportsPage() {
-  const [transactions, setTransactions] = useState<TransactionDetail[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<SalesAnalysis | null>(null);
+  const [transactions, setTransactions] = React.useState<TransactionDetail[]>([]);
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+  const [analysis, setAnalysis] = React.useState<SalesAnalysis | null>(null);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -246,4 +246,3 @@ export default function ReportsPage() {
     </DashboardLayout>
   );
 }
-
