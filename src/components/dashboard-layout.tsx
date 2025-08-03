@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/products", icon: Package, label: "Products" },
   { href: "/categories", icon: LayoutGrid, label: "Categories" },
   { href: "/customers", icon: Users2, label: "Customers" },
+  { href: "/transactions", icon: ShoppingCart, label: "Transactions" },
   { href: "/reports", icon: BarChart3, label: "Reports" },
 ];
 
