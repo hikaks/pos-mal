@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -21,7 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, PlusCircle, Loader2, Wand2 } from "lucide-react";
 import Image from "next/image";
 import DashboardLayout from "@/components/dashboard-layout";
-import { mockProducts, type Product, type Category } from "@/lib/data";
+import { mockProducts, type Product } from "@/lib/data";
+import type { Category } from "@/lib/data";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Card } from "@/components/ui/card";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>(mockProducts);
@@ -105,7 +108,7 @@ export default function ProductsPage() {
         name: formData.get('name') as string,
         price: parseFloat(formData.get('price') as string),
         stock: parseInt(formData.get('stock') as string),
-        category: selectedCategory || formData.get('category') as string,
+        category: selectedCategory || "Uncategorized",
         description: formData.get('description') as string,
         image: 'https://placehold.co/300x300.png',
     };
@@ -119,7 +122,8 @@ export default function ProductsPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center">
+      <div className="flex items-center mb-4">
+        <h1 className="text-2xl font-headline">Products</h1>
         <div className="ml-auto flex items-center gap-2">
             <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
                 <DialogTrigger asChild>
@@ -130,61 +134,69 @@ export default function ProductsPage() {
                         </span>
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle className="font-headline">Add New Product</DialogTitle>
                         <DialogDescription>
-                            Fill in the details below to add a new product to your inventory.
+                            Fill in the details below to add a new product. Use the AI assistant to get category suggestions.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleAddProduct}>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="name" className="text-right">Name</Label>
-                                <Input id="name" name="name" className="col-span-3" onChange={e => setProductName(e.target.value)} />
+                        <div className="grid gap-6 py-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Product Name</Label>
+                                    <Input id="name" name="name" placeholder="e.g. Espresso Machine" onChange={e => setProductName(e.target.value)} />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="category">Category</Label>
+                                     <Select onValueChange={setSelectedCategory} value={selectedCategory}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {categories.map(category => (
+                                                <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="description" className="text-right">Description</Label>
-                                <Textarea id="description" name="description" className="col-span-3" onChange={e => setProductDescription(e.target.value)} />
+
+                             <div className="space-y-2">
+                                <Label htmlFor="description">Description</Label>
+                                <Textarea id="description" name="description" placeholder="Describe the product" onChange={e => setProductDescription(e.target.value)} />
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="price" className="text-right">Price</Label>
-                                <Input id="price" name="price" type="number" step="0.01" className="col-span-3" />
+
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="price">Price</Label>
+                                    <Input id="price" name="price" type="number" step="0.01" placeholder="e.g. 299.99" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="stock">Stock</Label>
+                                    <Input id="stock" name="stock" type="number" placeholder="e.g. 15" />
+                                </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="stock" className="text-right">Stock</Label>
-                                <Input id="stock" name="stock" type="number" className="col-span-3" />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="category" className="text-right">Category</Label>
-                                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                    <SelectTrigger className="col-span-3">
-                                        <SelectValue placeholder="Select a category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {categories.map(category => (
-                                            <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                             <div className="col-span-4 -mb-2">
-                                <Button type="button" variant="outline" size="sm" onClick={handleSuggestCategories} disabled={isSuggesting}>
+                           
+                             <div className="space-y-4">
+                                <Button type="button" variant="outline" size="sm" onClick={handleSuggestCategories} disabled={isSuggesting || !productName || !productDescription}>
                                     {isSuggesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                                     Suggest Categories with AI
                                 </Button>
+                            
+                                {suggestions && (
+                                    <Card className="bg-muted/50 p-4">
+                                        <p className="text-sm font-medium mb-2">AI Suggestions:</p>
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            {suggestions.suggestedCategories.map(cat => (
+                                                <Badge key={cat} variant="secondary" className="cursor-pointer hover:bg-primary/20" onClick={() => setSelectedCategory(cat)}>{cat}</Badge>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground italic">{suggestions.reasoning}</p>
+                                    </Card>
+                                )}
                             </div>
-                             {suggestions && (
-                                <div className="col-span-4 bg-muted/50 p-3 rounded-lg">
-                                    <p className="text-sm font-medium mb-2">AI Suggestions:</p>
-                                    <div className="flex flex-wrap gap-2 mb-2">
-                                        {suggestions.suggestedCategories.map(cat => (
-                                            <Badge key={cat} variant="secondary" className="cursor-pointer" onClick={() => setSelectedCategory(cat)}>{cat}</Badge>
-                                        ))}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">{suggestions.reasoning}</p>
-                                </div>
-                            )}
                         </div>
                         <DialogFooter>
                             <Button type="submit">Save Product</Button>
@@ -194,56 +206,59 @@ export default function ProductsPage() {
             </Dialog>
         </div>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="hidden w-[100px] sm:table-cell">Image</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead className="hidden md:table-cell">Stock</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {products.map((product) => (
-            <TableRow key={product.id}>
-              <TableCell className="hidden sm:table-cell">
-                <Image
-                  alt={product.name}
-                  className="aspect-square rounded-md object-cover"
-                  height="64"
-                  src={product.image}
-                  width="64"
-                />
-              </TableCell>
-              <TableCell className="font-medium">{product.name}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{product.category}</Badge>
-              </TableCell>
-              <TableCell className="hidden md:table-cell">{product.stock}</TableCell>
-              <TableCell>${product.price.toFixed(2)}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button aria-haspopup="true" size="icon" variant="ghost">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Toggle menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem>Edit</DropdownMenuItem>
-                    <DropdownMenuItem>Delete</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
+      <Card>
+        <Table>
+            <TableHeader>
+            <TableRow>
+                <TableHead className="hidden w-[100px] sm:table-cell">Image</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead className="hidden md:table-cell">Stock</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>
+                <span className="sr-only">Actions</span>
+                </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody>
+            {products.map((product) => (
+                <TableRow key={product.id}>
+                <TableCell className="hidden sm:table-cell">
+                    <Image
+                    alt={product.name}
+                    className="aspect-square rounded-md object-cover"
+                    height="64"
+                    src={product.image}
+                    width="64"
+                    data-ai-hint="product image"
+                    />
+                </TableCell>
+                <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell>
+                    <Badge variant="outline">{product.category}</Badge>
+                </TableCell>
+                <TableCell className="hidden md:table-cell">{product.stock}</TableCell>
+                <TableCell>${product.price.toFixed(2)}</TableCell>
+                <TableCell>
+                    <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Toggle menu</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem>Delete</DropdownMenuItem>
+                    </DropdownMenuContent>
+                    </DropdownMenu>
+                </TableCell>
+                </TableRow>
+            ))}
+            </TableBody>
+        </Table>
+      </Card>
     </DashboardLayout>
   );
 }
