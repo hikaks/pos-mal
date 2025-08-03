@@ -17,6 +17,7 @@ import type { TransactionDetail } from '@/lib/data';
 const SalesAnalysisInputSchema = z.object({
   transactions: z.array(z.any()).describe("An array of transaction objects to be analyzed."),
   language: z.string().describe("The language for the analysis report."),
+  keywords: z.string().optional().describe("Specific keywords or questions to focus the analysis on."),
 });
 export type SalesAnalysisInput = z.infer<typeof SalesAnalysisInputSchema>;
 
@@ -28,7 +29,7 @@ const SalesAnalysisSchema = z.object({
 });
 export type SalesAnalysis = z.infer<typeof SalesAnalysisSchema>;
 
-export async function analyzeSalesTrends(input: { transactions: TransactionDetail[], language: string }): Promise<SalesAnalysis> {
+export async function analyzeSalesTrends(input: { transactions: TransactionDetail[], language: string, keywords?: string }): Promise<SalesAnalysis> {
     // We pass the raw transaction detail to the flow, as z.any() will accept it.
     // The prompt is engineered to handle the detailed structure.
     return analyzeSalesTrendsFlow(input);
@@ -42,6 +43,10 @@ const analyzeSalesTrendsPrompt = ai.definePrompt({
   prompt: `You are a professional business analyst AI. Your task is to analyze the provided transaction data and generate a concise report covering sales trends, predictions, and key insights.
 
 Generate the report in the following language: {{{language}}}.
+
+{{#if keywords}}
+Please focus your analysis on the following keywords or questions: {{{keywords}}}.
+{{/if}}
 
 Analyze the following JSON transaction data:
 {{{json transactions}}}
