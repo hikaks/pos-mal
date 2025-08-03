@@ -71,6 +71,9 @@ export default function ReportsPage() {
     const monthStart = startOfMonth(now);
 
     const parseDate = (dateStr: string): Date => {
+      if (typeof dateStr !== 'string' || !dateStr.includes(' ')) {
+        return new Date(0); // Return an invalid date if format is wrong
+      }
       const [datePart, timePart] = dateStr.split(' ');
       const [day, month, year] = datePart.split('/').map(Number);
       const [hours, minutes] = timePart.split(':').map(Number);
