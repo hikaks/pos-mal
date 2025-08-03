@@ -22,53 +22,79 @@ import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, PlusCircle, Loader2, Wand2 } from "lucide-react";
 import Image from "next/image";
 import DashboardLayout from "@/components/dashboard-layout";
-import { mockProducts, type Product } from "@/lib/data";
-import type { Category } from "@/lib/data";
+import { type Product, type Category } from "@/lib/data";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { suggestProductDescription, type SuggestProductDescriptionOutput } from "@/ai/flows/suggest-product-description";
+import { suggestProductDescription } from "@/ai/flows/suggest-product-description";
 import { getCategories } from "@/lib/firebase/categories";
+import { getProducts, addProduct, updateProduct, deleteProduct } from "@/lib/firebase/products";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setFormOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
+  
   const [isSuggesting, setSuggesting] = useState(false);
-  const [suggestedDescription, setSuggestedDescription] = useState<string | null>(null);
+  
+  // Form state
   const [productName, setProductName] = useState("");
   const [productKeywords, setProductKeywords] = useState("");
   const [productDescription, setProductDescription] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+  const [productPrice, setProductPrice] = useState("");
+  const [productStock, setProductStock] = useState("");
+
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function fetchCategories() {
-        try {
-            const fetchedCategories = await getCategories();
-            setCategories(fetchedCategories);
-        } catch(e) {
-            console.error(e);
-            toast({
-                title: "Error fetching categories",
-                description: "Could not fetch product categories. Please try again.",
-                variant: "destructive"
-            })
-        }
+  const fetchProductsAndCategories = async () => {
+    setIsLoading(true);
+    try {
+      const [fetchedProducts, fetchedCategories] = await Promise.all([
+        getProducts(),
+        getCategories()
+      ]);
+      setProducts(fetchedProducts);
+      setCategories(fetchedCategories);
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Error fetching data",
+        description: "Could not fetch products and categories. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-    fetchCategories();
-  }, [toast]);
+  };
 
+  useEffect(() => {
+    fetchProductsAndCategories();
+  }, []);
+
+  const resetForm = () => {
+    setProductName("");
+    setProductKeywords("");
+    setProductDescription("");
+    setSelectedCategory(undefined);
+    setProductPrice("");
+    setProductStock("");
+    setCurrentProduct(null);
+    setIsEditing(false);
+  };
 
   const handleSuggestDescription = async () => {
     if (!productName) {
@@ -80,7 +106,6 @@ export default function ProductsPage() {
       return;
     }
     setSuggesting(true);
-    setSuggestedDescription(null);
     try {
       const result = await suggestProductDescription({
         productName,
@@ -88,7 +113,6 @@ export default function ProductsPage() {
       });
       if (result.description) {
         setProductDescription(result.description);
-        setSuggestedDescription(result.description);
       }
     } catch (error) {
       console.error(error);
@@ -101,35 +125,94 @@ export default function ProductsPage() {
       setSuggesting(false);
     }
   };
-  
-  const handleAddProduct = (event: React.FormEvent<HTMLFormElement>) => {
+
+  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const newProduct: Product = {
-        id: products.length + 1,
-        name: formData.get('name') as string,
-        price: parseFloat(formData.get('price') as string),
-        stock: parseInt(formData.get('stock') as string),
-        category: selectedCategory || "Uncategorized",
-        description: formData.get('description') as string,
-        image: 'https://placehold.co/300x300.png',
+
+    const productData = {
+      name: productName,
+      price: parseFloat(productPrice),
+      stock: parseInt(productStock),
+      category: selectedCategory || "Uncategorized",
+      description: productDescription,
+      image: currentProduct?.image || 'https://placehold.co/300x300.png',
     };
-    setProducts(prev => [newProduct, ...prev]);
-    setFormOpen(false);
-    toast({
-        title: "Product Added",
-        description: `${newProduct.name} has been successfully added.`,
-    })
-  }
+
+    try {
+      if (isEditing && currentProduct) {
+        await updateProduct(currentProduct.id, productData);
+        toast({
+          title: "Success",
+          description: "Product updated successfully.",
+        });
+      } else {
+        await addProduct(productData);
+        toast({
+          title: "Success",
+          description: "Product added successfully.",
+        });
+      }
+      fetchProductsAndCategories();
+      setFormOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: `Failed to ${isEditing ? 'update' : 'add'} product.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openAddDialog = () => {
+    resetForm();
+    setIsEditing(false);
+    setFormOpen(true);
+  };
+  
+  const openEditDialog = (product: Product) => {
+    resetForm();
+    setIsEditing(true);
+    setCurrentProduct(product);
+    setProductName(product.name);
+    setProductDescription(product.description);
+    setSelectedCategory(product.category);
+    setProductPrice(product.price.toString());
+    setProductStock(product.stock.toString());
+    setFormOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+        await deleteProduct(id);
+        toast({
+            title: "Success",
+            description: "Product deleted successfully.",
+        });
+        fetchProductsAndCategories();
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: "Error",
+            description: "Failed to delete product.",
+            variant: "destructive",
+        });
+    }
+  };
 
   return (
     <DashboardLayout>
       <div className="flex items-center mb-4">
         <h1 className="text-2xl font-headline">Products</h1>
         <div className="ml-auto flex items-center gap-2">
-            <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
+            <Dialog open={isFormOpen} onOpenChange={(isOpen) => {
+              setFormOpen(isOpen);
+              if (!isOpen) {
+                resetForm();
+              }
+            }}>
                 <DialogTrigger asChild>
-                    <Button size="sm" className="h-8 gap-1">
+                    <Button size="sm" className="h-8 gap-1" onClick={openAddDialog}>
                         <PlusCircle className="h-3.5 w-3.5" />
                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                         Add Product
@@ -138,17 +221,17 @@ export default function ProductsPage() {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
-                        <DialogTitle className="font-headline">Add New Product</DialogTitle>
+                        <DialogTitle className="font-headline">{isEditing ? 'Edit Product' : 'Add New Product'}</DialogTitle>
                         <DialogDescription>
-                            Fill in the details below to add a new product. Use the AI assistant to get category suggestions.
+                            Fill in the details below. Use the AI assistant to suggest a description.
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleAddProduct}>
+                    <form onSubmit={handleFormSubmit}>
                         <div className="grid gap-6 py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="name">Product Name</Label>
-                                    <Input id="name" name="name" placeholder="e.g. Espresso Machine" onChange={e => setProductName(e.target.value)} />
+                                    <Input id="name" name="name" placeholder="e.g. Espresso Machine" value={productName} onChange={e => setProductName(e.target.value)} />
                                 </div>
                                  <div className="space-y-2">
                                     <Label htmlFor="category">Category</Label>
@@ -167,7 +250,7 @@ export default function ProductsPage() {
                             
                              <div className="space-y-2">
                                 <Label htmlFor="keywords">Keywords for AI</Label>
-                                <Input id="keywords" name="keywords" placeholder="e.g. coffee, home, professional" onChange={e => setProductKeywords(e.target.value)} />
+                                <Input id="keywords" name="keywords" placeholder="e.g. coffee, home, professional" value={productKeywords} onChange={e => setProductKeywords(e.target.value)} />
                             </div>
 
                              <div className="space-y-2">
@@ -182,22 +265,27 @@ export default function ProductsPage() {
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="price">Price</Label>
-                                    <Input id="price" name="price" type="number" step="0.01" placeholder="e.g. 299.99" />
+                                    <Input id="price" name="price" type="number" step="0.01" placeholder="e.g. 299.99" value={productPrice} onChange={e => setProductPrice(e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="stock">Stock</Label>
-                                    <Input id="stock" name="stock" type="number" placeholder="e.g. 15" />
+                                    <Input id="stock" name="stock" type="number" placeholder="e.g. 15" value={productStock} onChange={e => setProductStock(e.target.value)} />
                                 </div>
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="submit">Save Product</Button>
+                            <Button type="submit">{isEditing ? 'Save Changes' : 'Add Product'}</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
         </div>
       </div>
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
       <Card>
         <Table>
             <TableHeader>
@@ -241,8 +329,8 @@ export default function ProductsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>Delete</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditDialog(product)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(product.id)} className="text-destructive">Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                     </DropdownMenu>
                 </TableCell>
@@ -251,6 +339,7 @@ export default function ProductsPage() {
             </TableBody>
         </Table>
       </Card>
+      )}
     </DashboardLayout>
   );
 }

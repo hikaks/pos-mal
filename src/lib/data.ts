@@ -1,5 +1,5 @@
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   price: number;
   stock: number;
@@ -31,7 +31,7 @@ export interface Category {
 
 export const mockProducts: Product[] = [
   {
-    id: 1,
+    id: "1",
     name: "Espresso Machine",
     price: 299.99,
     stock: 15,
@@ -40,7 +40,7 @@ export const mockProducts: Product[] = [
     description: "A professional-grade espresso machine for home use."
   },
   {
-    id: 2,
+    id: "2",
     name: "Organic Coffee Beans",
     price: 24.5,
     stock: 50,
@@ -49,7 +49,7 @@ export const mockProducts: Product[] = [
     description: "1kg bag of single-origin organic coffee beans from Colombia."
   },
   {
-    id: 3,
+    id: "3",
     name: "Modern Bookshelf",
     price: 149.0,
     stock: 10,
@@ -58,7 +58,7 @@ export const mockProducts: Product[] = [
     description: "A sleek and modern bookshelf with 5 shelves, made from oak wood."
   },
   {
-    id: 4,
+    id: "4",
     name: "Wireless Headphones",
     price: 199.99,
     stock: 30,
@@ -67,7 +67,7 @@ export const mockProducts: Product[] = [
     description: "Noise-cancelling over-ear wireless headphones with 40-hour battery life."
   },
   {
-    id: 5,
+    id: "5",
     name: "Yoga Mat",
     price: 39.95,
     stock: 100,
@@ -76,7 +76,7 @@ export const mockProducts: Product[] = [
     description: "Eco-friendly, non-slip yoga mat for all types of yoga and pilates."
   },
   {
-    id: 6,
+    id: "6",
     name: "Smart Watch",
     price: 249.00,
     stock: 25,
@@ -85,7 +85,7 @@ export const mockProducts: Product[] = [
     description: "A smartwatch with fitness tracking, heart rate monitor, and GPS."
   },
   {
-    id: 7,
+    id: "7",
     name: "Leather Wallet",
     price: 75.00,
     stock: 40,
@@ -94,7 +94,7 @@ export const mockProducts: Product[] = [
     description: "A minimalist bifold wallet made from genuine leather."
   },
   {
-    id: 8,
+    id: "8",
     name: "Blender",
     price: 89.99,
     stock: 20,
