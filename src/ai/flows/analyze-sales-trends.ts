@@ -12,26 +12,25 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import type { TransactionDetail } from '@/lib/data';
 
 const SalesAnalysisInputSchema = z.object({
-  transactions: z.array(z.any()).describe("An array of transaction objects to be analyzed."),
+  transactions: z.array(z.any()).describe("An array of transaction objects to be analyzed. Each transaction item should ideally include a 'category' field."),
   language: z.string().describe("The language for the analysis report."),
-  keywords: z.string().optional().describe("Specific keywords or questions to focus the analysis on."),
+  keywords: z.string().optional().describe("Specific keywords, themes, or questions to focus the analysis on. e.g., 'weekend sales', 'best performing drinks'"),
 });
 export type SalesAnalysisInput = z.infer<typeof SalesAnalysisInputSchema>;
 
 const SalesAnalysisSchema = z.object({
-  trendAnalysis: z.string().describe("A summary of sales trends, like performance of certain product categories or overall sales velocity."),
-  salesPrediction: z.string().describe("A prediction for future sales based on the provided historical data."),
-  peakSalesTime: z.string().describe("The time of day or week when sales are highest."),
-  topPerformingCategories: z.array(z.string()).describe("A list of the best-performing product categories."),
+  executiveSummary: z.string().describe("A high-level, concise summary of the most critical findings and recommendations."),
+  trendAnalysis: z.string().describe("A detailed summary of sales trends, like performance of certain product categories, overall sales velocity, and patterns over time."),
+  salesPrediction: z.string().describe("A data-driven prediction for future sales based on the provided historical data and identified trends."),
+  peakSalesTime: z.string().describe("The time of day, day of the week, or specific date patterns (e.g., month-end) when sales are highest."),
+  topPerformingCategories: z.array(z.string()).describe("A list of the best-performing product categories based on sales volume and revenue."),
+  actionableRecommendations: z.string().describe("A list of clear, actionable recommendations based on the analysis. For example, marketing strategies, inventory adjustments, or product bundling opportunities."),
 });
 export type SalesAnalysis = z.infer<typeof SalesAnalysisSchema>;
 
-export async function analyzeSalesTrends(input: { transactions: TransactionDetail[], language: string, keywords?: string }): Promise<SalesAnalysis> {
-    // We pass the raw transaction detail to the flow, as z.any() will accept it.
-    // The prompt is engineered to handle the detailed structure.
+export async function analyzeSalesTrends(input: SalesAnalysisInput): Promise<SalesAnalysis> {
     return analyzeSalesTrendsFlow(input);
 }
 
@@ -40,24 +39,22 @@ const analyzeSalesTrendsPrompt = ai.definePrompt({
   name: 'analyzeSalesTrendsPrompt',
   input: { schema: SalesAnalysisInputSchema },
   output: { schema: SalesAnalysisSchema },
-  prompt: `You are a professional business analyst AI. Your task is to analyze the provided transaction data and generate a concise report covering sales trends, predictions, and key insights.
+  prompt: `You are a Senior Business Analyst AI, an expert in retail and e-commerce analytics. Your task is to perform a deep-dive analysis of the provided transaction data and generate a sophisticated, actionable business report.
 
 Generate the report in the following language: {{{language}}}.
 
-{{#if keywords}}
-Please focus your analysis on the following keywords or questions: {{{keywords}}}.
-{{/if}}
+The user has provided the following keywords to focus your analysis: "{{#if keywords}}{{{keywords}}}{{else}}Overall Performance{{/if}}". Use these keywords to guide your investigation and tailor your insights.
 
-Analyze the following JSON transaction data:
+Analyze the following JSON transaction data. Note that each item within a transaction should have a 'category' field.
 {{{json transactions}}}
 
-Based on your analysis, provide the following insights:
-- trendAnalysis: Briefly describe the overall sales trend. Are sales increasing, decreasing, or stable? Are there any notable patterns in product categories?
-- salesPrediction: Based on the trend, provide a short-term sales prediction. For example, "Sales are expected to increase by 10-15% next month."
-- peakSalesTime: Identify the days of the week or times of day when sales are most frequent.
-- topPerformingCategories: List the top 3-5 product categories based on sales volume and revenue.
-
-Your response must be in JSON format.`,
+Based on your comprehensive analysis, provide the following detailed insights in JSON format:
+- executiveSummary: A high-level summary for a busy executive. Briefly state the most critical findings and key recommendations.
+- trendAnalysis: Go beyond simple observations. Describe the sales velocity, identify any accelerating or decelerating trends for product categories. Are there correlations between products purchased together? Mention any notable patterns.
+- salesPrediction: Provide a nuanced sales prediction based on the trends. Instead of a generic percentage, explain the reasoning. For example, "Given the strong performance of 'Electronics' and the upcoming holiday season, we can project a 20% increase in that category, while overall sales may see a 12% lift."
+- peakSalesTime: Identify the specific days of the week and times of day that are sales hotspots. Are there any patterns like higher sales at the beginning of the month?
+- topPerformingCategories: List the top 3-5 product CATEGORIES (not individual products) based on both sales volume and total revenue.
+- actionableRecommendations: Provide a list of concrete, actionable recommendations. These should be creative and data-driven. Examples: "Launch a 'Work from Home' bundle with 'Organic Coffee Beans' and a 'Wireless Mouse' based on co-purchase data." or "Increase stock for 'Appliances' by 15% before the month-end salary peak."`,
 });
 
 const analyzeSalesTrendsFlow = ai.defineFlow(

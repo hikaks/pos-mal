@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/card";
 import DashboardLayout from "@/components/dashboard-layout";
 import { getTransactions } from "@/lib/firebase/transactions";
-import type { TransactionDetail } from "@/lib/data";
+import { getProducts } from "@/lib/firebase/products";
+import type { TransactionDetail, Product } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, BrainCircuit } from "lucide-react";
 import { analyzeSalesTrends, type SalesAnalysis } from "@/ai/flows/analyze-sales-trends";
@@ -37,6 +38,7 @@ type ReportPeriod = "all" | "today" | "month";
 
 export default function ReportsPage() {
   const [allTransactions, setAllTransactions] = React.useState<TransactionDetail[]>([]);
+  const [allProducts, setAllProducts] = React.useState<Product[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [analysis, setAnalysis] = React.useState<SalesAnalysis | null>(null);
@@ -49,8 +51,12 @@ export default function ReportsPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const fetchedTransactions = await getTransactions();
+        const [fetchedTransactions, fetchedProducts] = await Promise.all([
+            getTransactions(),
+            getProducts()
+        ]);
         setAllTransactions(fetchedTransactions);
+        setAllProducts(fetchedProducts);
       } catch (error) {
         console.error(error);
         toast({
@@ -75,19 +81,35 @@ export default function ReportsPage() {
         return new Date(0); // Return an invalid date if format is wrong
       }
       const [datePart, timePart] = dateStr.split(' ');
+      if (!datePart || !timePart) return new Date(0);
       const [day, month, year] = datePart.split('/').map(Number);
       const [hours, minutes] = timePart.split(':').map(Number);
+      if (isNaN(day) || isNaN(month) || isNaN(year) || isNaN(hours) || isNaN(minutes)) {
+          return new Date(0);
+      }
       return new Date(year, month - 1, day, hours, minutes);
     };
 
+    let transactions;
     if (reportPeriod === "today") {
-      return allTransactions.filter(t => isWithinInterval(parseDate(t.date), { start: today, end: now }));
+      transactions = allTransactions.filter(t => isWithinInterval(parseDate(t.date), { start: today, end: now }));
+    } else if (reportPeriod === "month") {
+      transactions = allTransactions.filter(t => isWithinInterval(parseDate(t.date), { start: monthStart, end: now }));
+    } else {
+      transactions = allTransactions;
     }
-    if (reportPeriod === "month") {
-      return allTransactions.filter(t => isWithinInterval(parseDate(t.date), { start: monthStart, end: now }));
-    }
-    return allTransactions;
-  }, [allTransactions, reportPeriod]);
+
+    // Enrich transaction items with category
+    const productMap = new Map(allProducts.map(p => [p.id, p]));
+    return transactions.map(t => ({
+        ...t,
+        items: t.items.map(item => ({
+            ...item,
+            category: productMap.get(item.id)?.category || "Uncategorized"
+        }))
+    }));
+
+  }, [allTransactions, allProducts, reportPeriod]);
 
   const handleAnalyzeSales = async () => {
     if (!filteredTransactions.length) {
@@ -186,12 +208,12 @@ export default function ReportsPage() {
           </div>
           <TabsContent value={reportPeriod} className="space-y-6">
             <Card>
-                <CardHeader className="flex-row items-center justify-between">
+                <CardHeader className="flex-row items-start justify-between gap-4">
                     <div>
                         <CardTitle>AI-Powered Analysis</CardTitle>
                         <CardDescription>Get deeper insights with AI. Enter keywords to focus the analysis.</CardDescription>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-shrink-0">
                         <Input 
                             placeholder="Optional: e.g., 'weekend sales', 'best drink'"
                             className="w-[300px]"
@@ -227,27 +249,32 @@ export default function ReportsPage() {
 
                 {analysis && (
                      <CardContent>
-                        <Card className="bg-secondary border-primary/50">
+                        <Card className="bg-secondary/50 border-primary/20">
                             <CardHeader>
                                 <CardTitle className="font-headline text-primary flex items-center gap-2"><BrainCircuit/> AI Sales Analysis & Predictions</CardTitle>
+                                <CardDescription>{analysis.executiveSummary}</CardDescription>
                             </CardHeader>
-                            <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                    <h3 className="font-semibold">Sales Prediction</h3>
-                                    <p className="text-sm text-muted-foreground">{analysis.salesPrediction}</p>
+                            <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
+                                <div className="space-y-2 lg:col-span-3">
+                                    <h3 className="font-semibold text-base">Actionable Recommendations</h3>
+                                    <p className="text-muted-foreground whitespace-pre-wrap">{analysis.actionableRecommendations}</p>
                                 </div>
                                 <div className="space-y-2">
-                                     <h3 className="font-semibold">Trend Analysis</h3>
-                                    <p className="text-sm text-muted-foreground">{analysis.trendAnalysis}</p>
+                                    <h3 className="font-semibold text-base">Sales Prediction</h3>
+                                    <p className="text-muted-foreground">{analysis.salesPrediction}</p>
                                 </div>
                                 <div className="space-y-2">
-                                     <h3 className="font-semibold">Peak Sales Time</h3>
-                                    <p className="text-sm text-muted-foreground">{analysis.peakSalesTime}</p>
+                                     <h3 className="font-semibold text-base">Trend Analysis</h3>
+                                    <p className="text-muted-foreground">{analysis.trendAnalysis}</p>
+                                </div>
+                                <div className="space-y-2">
+                                     <h3 className="font-semibold text-base">Peak Sales Time</h3>
+                                    <p className="text-muted-foreground">{analysis.peakSalesTime}</p>
                                 </div>
                                 <div className="space-y-2 col-span-full">
-                                    <h3 className="font-semibold">Top Performing Categories</h3>
+                                    <h3 className="font-semibold text-base">Top Performing Categories</h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {analysis.topPerformingCategories.map(cat => <Badge key={cat} variant="default">{cat}</Badge>)}
+                                        {analysis.topPerformingCategories.map(cat => <Badge key={cat} variant="default" className="text-sm">{cat}</Badge>)}
                                     </div>
                                 </div>
                             </CardContent>
