@@ -64,7 +64,6 @@ export default function TransactionsPage() {
   const parseDate = (dateStr: string | undefined): Date => {
     if (!dateStr || typeof dateStr !== 'string') return new Date(0);
     try {
-        // Handles "dd/MM/yyyy HH:mm"
         const parsed = parse(dateStr, 'dd/MM/yyyy HH:mm', new Date());
         if (isNaN(parsed.getTime())) return new Date(0);
         return parsed;
@@ -93,10 +92,10 @@ export default function TransactionsPage() {
         
         // Check against multiple fields
         return (
-          (transaction.id && transaction.id.toLowerCase().includes(lowercasedFilter)) ||
-          (transaction.date && transaction.date.toLowerCase().includes(lowercasedFilter)) ||
-          (transaction.paymentMethod && transaction.paymentMethod.toLowerCase().includes(lowercasedFilter)) ||
-          transaction.total.toString().includes(lowercasedFilter) ||
+          (transaction.id?.toLowerCase().includes(lowercasedFilter)) ||
+          (transaction.date?.toString().toLowerCase().includes(lowercasedFilter)) ||
+          (transaction.paymentMethod?.toLowerCase().includes(lowercasedFilter)) ||
+          transaction.total.toString().toLowerCase().includes(lowercasedFilter) ||
           transaction.items.some(item => item.name.toLowerCase().includes(lowercasedFilter))
         );
       });
@@ -296,5 +295,3 @@ export default function TransactionsPage() {
     </DashboardLayout>
   );
 }
-
-    
