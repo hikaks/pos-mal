@@ -27,7 +27,6 @@ export interface Transaction {
 export interface Category {
   id: string;
   name: string;
-  description: string;
 }
 
 export const mockProducts: Product[] = [

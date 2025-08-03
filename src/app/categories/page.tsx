@@ -1,7 +1,7 @@
 
 "use client";
 
-import * as React from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -23,20 +23,19 @@ import DashboardLayout from "@/components/dashboard-layout";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { getCategories, addCategory, updateCategory, deleteCategory } from "@/lib/firebase/categories";
 import type { Category } from "@/lib/data";
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = React.useState<Category[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isFormOpen, setFormOpen] = React.useState(false);
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [currentCategory, setCurrentCategory] = React.useState<Category | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFormOpen, setFormOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const { toast } = useToast();
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchCategories();
   }, []);
 
@@ -62,7 +61,6 @@ export default function CategoriesPage() {
     const formData = new FormData(event.currentTarget);
     const categoryData = {
       name: formData.get('name') as string,
-      description: formData.get('description') as string,
     };
 
     try {
@@ -147,10 +145,6 @@ export default function CategoriesPage() {
                                 <Label htmlFor="name" className="text-right">Name</Label>
                                 <Input id="name" name="name" className="col-span-3" defaultValue={currentCategory?.name} />
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="description" className="text-right">Description</Label>
-                                <Textarea id="description" name="description" className="col-span-3" defaultValue={currentCategory?.description} />
-                            </div>
                         </div>
                         <DialogFooter>
                             <Button type="submit">{isEditing ? 'Save Changes' : 'Add Category'}</Button>
@@ -168,8 +162,8 @@ export default function CategoriesPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
               </TableHead>
@@ -178,8 +172,8 @@ export default function CategoriesPage() {
           <TableBody>
             {categories.map((category) => (
               <TableRow key={category.id}>
+                <TableCell className="font-mono text-xs">{category.id}</TableCell>
                 <TableCell className="font-medium">{category.name}</TableCell>
-                <TableCell>{category.description}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

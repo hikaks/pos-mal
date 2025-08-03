@@ -14,7 +14,7 @@ export async function addCategory(category: Omit<Category, 'id'>) {
     return docRef.id;
 }
 
-export async function updateCategory(id: string, category: Partial<Category>) {
+export async function updateCategory(id: string, category: Partial<Omit<Category, 'id'>>) {
     const categoryDoc = doc(db, "categories", id);
     await updateDoc(categoryDoc, category);
 }

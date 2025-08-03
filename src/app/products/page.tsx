@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -38,17 +38,17 @@ import {
 } from "@/components/ui/select"
 
 export default function ProductsPage() {
-  const [products, setProducts] = React.useState<Product[]>(mockProducts);
-  const [categories, setCategories] = React.useState<Category[]>([]);
-  const [isFormOpen, setFormOpen] = React.useState(false);
-  const [isSuggesting, setSuggesting] = React.useState(false);
-  const [suggestions, setSuggestions] = React.useState<SuggestProductCategoriesOutput | null>(null);
-  const [productName, setProductName] = React.useState("");
-  const [productDescription, setProductDescription] = React.useState("");
-  const [selectedCategory, setSelectedCategory] = React.useState<string | undefined>(undefined);
+  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isFormOpen, setFormOpen] = useState(false);
+  const [isSuggesting, setSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestProductCategoriesOutput | null>(null);
+  const [productName, setProductName] = useState("");
+  const [productDescription, setProductDescription] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const { toast } = useToast();
 
-  React.useEffect(() => {
+  useEffect(() => {
     async function fetchCategories() {
         try {
             const fetchedCategories = await getCategories();
