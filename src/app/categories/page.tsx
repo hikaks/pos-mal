@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { getCategories, addCategory, updateCategory, deleteCategory } from "@/lib/firebase/categories";
 import type { Category } from "@/lib/data";
+import { Card } from "@/components/ui/card";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
