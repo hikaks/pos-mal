@@ -254,33 +254,27 @@ export default function POSPage() {
                   <div className="space-y-4">
                     <div className="text-center text-4xl font-bold font-headline">${total.toFixed(2)}</div>
                     <RadioGroup defaultValue="cash" onValueChange={setPaymentMethod} value={paymentMethod} className="grid grid-cols-3 gap-4">
-                        <div>
-                          <RadioGroupItem value="cash" id="cash" className="peer sr-only" />
-                          <Label
-                            htmlFor="cash"
-                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                          >
-                            Cash
-                          </Label>
-                        </div>
-                        <div>
-                          <RadioGroupItem value="card" id="card" className="peer sr-only" />
-                          <Label
-                            htmlFor="card"
-                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                          >
-                            Card
-                          </Label>
-                        </div>
-                        <div>
-                          <RadioGroupItem value="ewallet" id="ewallet" className="peer sr-only" />
-                          <Label
-                            htmlFor="ewallet"
-                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                          >
-                            E-Wallet
-                          </Label>
-                        </div>
+                        <Label
+                          htmlFor="cash"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                        >
+                          <RadioGroupItem value="cash" id="cash" className="sr-only" />
+                          Cash
+                        </Label>
+                        <Label
+                          htmlFor="card"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                        >
+                          <RadioGroupItem value="card" id="card" className="sr-only" />
+                          Card
+                        </Label>
+                        <Label
+                          htmlFor="ewallet"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                        >
+                           <RadioGroupItem value="ewallet" id="ewallet" className="sr-only" />
+                          E-Wallet
+                        </Label>
                     </RadioGroup>
                     {paymentMethod === "cash" && (
                       <div className="space-y-2">
@@ -309,3 +303,5 @@ export default function POSPage() {
     </DashboardLayout>
   );
 }
+
+    
