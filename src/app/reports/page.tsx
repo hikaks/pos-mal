@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, BrainCircuit } from "lucide-react";
 import { analyzeSalesTrends, type SalesAnalysis } from "@/ai/flows/analyze-sales-trends";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type SalesData = {
   name: string;
