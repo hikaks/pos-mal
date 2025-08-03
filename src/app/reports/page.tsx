@@ -19,6 +19,8 @@ import { Loader2, BrainCircuit } from "lucide-react";
 import { analyzeSalesTrends, type SalesAnalysis } from "@/ai/flows/analyze-sales-trends";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 type SalesData = {
   name: string;
@@ -31,6 +33,7 @@ export default function ReportsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [analysis, setAnalysis] = React.useState<SalesAnalysis | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = React.useState("English");
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -69,7 +72,7 @@ export default function ReportsPage() {
     setIsAnalyzing(true);
     setAnalysis(null);
     try {
-      const result = await analyzeSalesTrends({ transactions });
+      const result = await analyzeSalesTrends({ transactions, language: selectedLanguage });
       setAnalysis(result);
     } catch (error) {
       console.error(error);
@@ -144,7 +147,21 @@ export default function ReportsPage() {
         <div className="space-y-6">
             <div className="flex items-center">
                 <h1 className="text-2xl font-headline">Sales Reports</h1>
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                       <Label htmlFor="language-select">Analysis Language</Label>
+                       <Select onValueChange={setSelectedLanguage} defaultValue={selectedLanguage}>
+                            <SelectTrigger id="language-select" className="w-[180px]">
+                                <SelectValue placeholder="Select language" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="English">English</SelectItem>
+                                <SelectItem value="Indonesian">Indonesian</SelectItem>
+                                <SelectItem value="Spanish">Spanish</SelectItem>
+                                <SelectItem value="French">French</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <Button onClick={handleAnalyzeSales} disabled={isAnalyzing}>
                         {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <BrainCircuit className="mr-2 h-4 w-4"/>}
                         {isAnalyzing ? "Analyzing..." : "Get AI Insights"}
