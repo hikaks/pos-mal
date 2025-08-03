@@ -110,8 +110,11 @@ export default function POSPage() {
     
     setIsProcessing(true);
 
+    const now = new Date();
+    const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
     const transactionData = {
-      date: Date.now(),
+      date: formattedDate,
       items: cart.map(({ id, name, price, quantity }) => ({ id, name, price, quantity })),
       subtotal,
       taxAmount,
@@ -253,26 +256,26 @@ export default function POSPage() {
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="text-center text-4xl font-bold font-headline">${total.toFixed(2)}</div>
-                    <RadioGroup defaultValue="cash" onValueChange={setPaymentMethod} value={paymentMethod} className="grid grid-cols-3 gap-4">
+                    <RadioGroup onValueChange={setPaymentMethod} value={paymentMethod} className="grid grid-cols-3 gap-4">
                         <Label
                           htmlFor="cash"
                           className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
                         >
-                          <RadioGroupItem value="cash" id="cash" className="sr-only" />
+                          <RadioGroupItem value="cash" id="cash" className="peer sr-only" />
                           Cash
                         </Label>
                         <Label
                           htmlFor="card"
                           className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
                         >
-                          <RadioGroupItem value="card" id="card" className="sr-only" />
+                          <RadioGroupItem value="card" id="card" className="peer sr-only" />
                           Card
                         </Label>
                         <Label
                           htmlFor="ewallet"
                           className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
                         >
-                           <RadioGroupItem value="ewallet" id="ewallet" className="sr-only" />
+                           <RadioGroupItem value="ewallet" id="ewallet" className="peer sr-only" />
                           E-Wallet
                         </Label>
                     </RadioGroup>
@@ -303,3 +306,5 @@ export default function POSPage() {
     </DashboardLayout>
   );
 }
+
+    

@@ -31,7 +31,7 @@ export interface Category {
 
 export interface TransactionDetail {
   id: string;
-  date: number; // Using timestamp for easy sorting
+  date: string; 
   items: {
     id: string;
     name: string;
@@ -186,3 +186,5 @@ export const mockCustomerPurchaseHistory = {
       },
     ],
 };
+
+    
