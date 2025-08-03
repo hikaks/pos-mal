@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import { Plus, Minus, Trash2, Loader2 } from "lucide-react";
 import type { Product } from "@/lib/data";
-import { getProducts } from "@/lib/firebase/products";
+import { getProducts, updateProduct } from "@/lib/firebase/products";
 import { addTransaction } from "@/lib/firebase/transactions";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -45,22 +45,23 @@ export default function POSPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
+  const fetchProducts = async () => {
+    try {
+      const fetchedProducts = await getProducts();
+      setProducts(fetchedProducts);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch products from the database.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const fetchedProducts = await getProducts();
-        setProducts(fetchedProducts);
-      } catch (error) {
-        console.error("Failed to fetch products:", error);
-        toast({
-          title: "Error",
-          description: "Could not fetch products from the database.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingProducts(false);
-      }
-    };
     fetchProducts();
   }, [toast]);
 
@@ -125,18 +126,28 @@ export default function POSPage() {
 
     try {
       await addTransaction(transactionData);
+
+      // Update stock for each product in the cart
+      for (const item of cart) {
+        const newStock = item.stock - item.quantity;
+        await updateProduct(item.id, { stock: newStock });
+      }
+
       toast({
         title: "Transaction Complete",
-        description: "The sale has been successfully recorded in Firebase.",
+        description: "The sale has been successfully recorded.",
       });
+      
+      // Reset state and fetch updated product list
       setCart([]);
       setCashReceived(0);
       setCheckoutOpen(false);
+      fetchProducts(); // Refetch products to get updated stock
     } catch (error) {
       console.error("Failed to save transaction: ", error);
       toast({
         title: "Transaction Failed",
-        description: "Could not save the transaction to the database.",
+        description: "Could not save the transaction or update stock.",
         variant: "destructive"
       });
     } finally {
@@ -167,7 +178,12 @@ export default function POSPage() {
                     />
                   </CardHeader>
                   <CardContent className="p-4">
-                    <h3 className="font-semibold text-lg">{product.name}</h3>
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-semibold text-lg">{product.name}</h3>
+                      <Badge variant={product.stock > 0 ? "secondary" : "destructive"}>
+                        {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+                      </Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">{product.category}</p>
                     <p className="font-bold text-lg mt-2">${product.price.toFixed(2)}</p>
                   </CardContent>
@@ -176,8 +192,9 @@ export default function POSPage() {
                       size="sm"
                       className="w-full"
                       onClick={() => handleAddToCart(product)}
+                      disabled={product.stock === 0}
                     >
-                      Add to Cart
+                      {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -259,21 +276,21 @@ export default function POSPage() {
                     <RadioGroup onValueChange={setPaymentMethod} value={paymentMethod} className="grid grid-cols-3 gap-4">
                         <Label
                           htmlFor="cash"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                         >
                           <RadioGroupItem value="cash" id="cash" className="peer sr-only" />
                           Cash
                         </Label>
                         <Label
                           htmlFor="card"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                         >
                           <RadioGroupItem value="card" id="card" className="peer sr-only" />
                           Card
                         </Label>
                         <Label
                           htmlFor="ewallet"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                         >
                            <RadioGroupItem value="ewallet" id="ewallet" className="peer sr-only" />
                           E-Wallet
@@ -306,5 +323,3 @@ export default function POSPage() {
     </DashboardLayout>
   );
 }
-
-    

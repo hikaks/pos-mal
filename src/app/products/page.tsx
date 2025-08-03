@@ -293,7 +293,7 @@ export default function ProductsPage() {
                 <TableHead className="hidden w-[100px] sm:table-cell">Image</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead className="hidden md:table-cell">Stock</TableHead>
+                <TableHead>Stock</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>
                 <span className="sr-only">Actions</span>
@@ -317,7 +317,11 @@ export default function ProductsPage() {
                 <TableCell>
                     <Badge variant="outline">{product.category}</Badge>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{product.stock}</TableCell>
+                <TableCell>
+                  <Badge variant={product.stock > 10 ? 'secondary' : 'destructive'}>
+                    {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                  </Badge>
+                </TableCell>
                 <TableCell>${product.price.toFixed(2)}</TableCell>
                 <TableCell>
                     <DropdownMenu>
