@@ -1,6 +1,7 @@
+
 "use client";
 
-import * as React from "react";
+import React, { useState, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -33,10 +34,10 @@ interface CartItem extends Product {
 }
 
 export default function POSPage() {
-  const [cart, setCart] = React.useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = React.useState("cash");
-  const [cashReceived, setCashReceived] = React.useState(0);
-  const [isCheckoutOpen, setCheckoutOpen] = React.useState(false);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [cashReceived, setCashReceived] = useState(0);
+  const [isCheckoutOpen, setCheckoutOpen] = useState(false);
   const { toast } = useToast();
 
   const handleAddToCart = (product: Product) => {
@@ -64,7 +65,7 @@ export default function POSPage() {
     });
   };
 
-  const subtotal = React.useMemo(() => {
+  const subtotal = useMemo(() => {
     return cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   }, [cart]);
 
