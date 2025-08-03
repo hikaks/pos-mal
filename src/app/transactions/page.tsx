@@ -61,11 +61,15 @@ export default function TransactionsPage() {
     fetchTransactions();
   }, [toast]);
   
-  const parseDate = (dateStr: string): Date => {
+  const parseDate = (dateStr: string | undefined): Date => {
+    if (!dateStr) return new Date(0);
     try {
+        // Handles "dd/MM/yyyy HH:mm"
         return parse(dateStr, 'dd/MM/yyyy HH:mm', new Date());
     } catch(e) {
-        return new Date(0);
+        // Fallback for other potential date formats or invalid dates
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? new Date(0) : d;
     }
   };
 
@@ -73,12 +77,13 @@ export default function TransactionsPage() {
     return transactions
       .filter((transaction) => {
         // Filter by search term (ID)
-        if (searchTerm && !transaction.id.toLowerCase().includes(searchTerm.toLowerCase())) {
+        if (searchTerm && transaction.id && !transaction.id.toLowerCase().includes(searchTerm.toLowerCase())) {
           return false;
         }
         // Filter by date range
         if (dateRange?.from && dateRange?.to) {
           const transactionDate = parseDate(transaction.date);
+          if (isNaN(transactionDate.getTime())) return false;
           return transactionDate >= dateRange.from && transactionDate <= dateRange.to;
         }
         return true;
