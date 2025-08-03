@@ -121,9 +121,16 @@ export default function CategoriesPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center">
+      <div className="flex items-center mb-4">
+        <h1 className="text-2xl font-headline">Categories</h1>
         <div className="ml-auto flex items-center gap-2">
-            <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
+            <Dialog open={isFormOpen} onOpenChange={(isOpen) => {
+              setFormOpen(isOpen);
+              if (!isOpen) {
+                setCurrentCategory(null);
+                setIsEditing(false);
+              }
+            }}>
                 <DialogTrigger asChild>
                     <Button size="sm" className="h-8 gap-1" onClick={openAddDialog}>
                         <PlusCircle className="h-3.5 w-3.5" />
@@ -159,42 +166,43 @@ export default function CategoriesPage() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categories.map((category) => (
-              <TableRow key={category.id}>
-                <TableCell className="font-mono text-xs">{category.id}</TableCell>
-                <TableCell className="font-medium">{category.name}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => handleEdit(category)}>Edit</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDelete(category.id)} className="text-destructive">Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Card>
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>
+                    <span className="sr-only">Actions</span>
+                </TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {categories.map((category) => (
+                <TableRow key={category.id}>
+                    <TableCell className="font-mono text-xs">{category.id}</TableCell>
+                    <TableCell className="font-medium">{category.name}</TableCell>
+                    <TableCell>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                        </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleEdit(category)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(category.id)} className="text-destructive">Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    </TableCell>
+                </TableRow>
+                ))}
+            </TableBody>
+            </Table>
+        </Card>
       )}
     </DashboardLayout>
   );
 }
-
