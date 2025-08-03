@@ -21,22 +21,50 @@ import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, PlusCircle, Loader2, Wand2 } from "lucide-react";
 import Image from "next/image";
 import DashboardLayout from "@/components/dashboard-layout";
-import { mockProducts, type Product } from "@/lib/data";
+import { mockProducts, type Product, type Category } from "@/lib/data";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { suggestProductCategories, type SuggestProductCategoriesOutput } from "@/ai/flows/suggest-product-categories";
+import { getCategories } from "@/lib/firebase/categories";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function ProductsPage() {
   const [products, setProducts] = React.useState<Product[]>(mockProducts);
+  const [categories, setCategories] = React.useState<Category[]>([]);
   const [isFormOpen, setFormOpen] = React.useState(false);
   const [isSuggesting, setSuggesting] = React.useState(false);
   const [suggestions, setSuggestions] = React.useState<SuggestProductCategoriesOutput | null>(null);
   const [productName, setProductName] = React.useState("");
   const [productDescription, setProductDescription] = React.useState("");
+  const [selectedCategory, setSelectedCategory] = React.useState<string | undefined>(undefined);
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    async function fetchCategories() {
+        try {
+            const fetchedCategories = await getCategories();
+            setCategories(fetchedCategories);
+        } catch(e) {
+            console.error(e);
+            toast({
+                title: "Error fetching categories",
+                description: "Could not fetch product categories. Please try again.",
+                variant: "destructive"
+            })
+        }
+    }
+    fetchCategories();
+  }, [toast]);
+
 
   const handleSuggestCategories = async () => {
     if (!productName || !productDescription) {
@@ -77,7 +105,7 @@ export default function ProductsPage() {
         name: formData.get('name') as string,
         price: parseFloat(formData.get('price') as string),
         stock: parseInt(formData.get('stock') as string),
-        category: formData.get('category') as string,
+        category: selectedCategory || formData.get('category') as string,
         description: formData.get('description') as string,
         image: 'https://placehold.co/300x300.png',
     };
@@ -129,7 +157,16 @@ export default function ProductsPage() {
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="category" className="text-right">Category</Label>
-                                <Input id="category" name="category" className="col-span-3" />
+                                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Select a category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {categories.map(category => (
+                                            <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                              <div className="col-span-4 -mb-2">
                                 <Button type="button" variant="outline" size="sm" onClick={handleSuggestCategories} disabled={isSuggesting}>
@@ -142,10 +179,7 @@ export default function ProductsPage() {
                                     <p className="text-sm font-medium mb-2">AI Suggestions:</p>
                                     <div className="flex flex-wrap gap-2 mb-2">
                                         {suggestions.suggestedCategories.map(cat => (
-                                            <Badge key={cat} variant="secondary" className="cursor-pointer" onClick={() => {
-                                                const catInput = document.getElementById('category') as HTMLInputElement;
-                                                if (catInput) catInput.value = cat;
-                                            }}>{cat}</Badge>
+                                            <Badge key={cat} variant="secondary" className="cursor-pointer" onClick={() => setSelectedCategory(cat)}>{cat}</Badge>
                                         ))}
                                     </div>
                                     <p className="text-xs text-muted-foreground">{suggestions.reasoning}</p>

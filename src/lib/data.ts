@@ -24,6 +24,12 @@ export interface Transaction {
   items: number;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export const mockProducts: Product[] = [
   {
     id: 1,

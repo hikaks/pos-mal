@@ -10,6 +10,7 @@ import {
   Users2,
   Menu,
   Store,
+  LayoutGrid,
 } from "lucide-react";
 import {
   Sheet,
@@ -29,6 +30,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/", icon: Home, label: "POS" },
   { href: "/products", icon: Package, label: "Products" },
+  { href: "/categories", icon: LayoutGrid, label: "Categories" },
   { href: "/customers", icon: Users2, label: "Customers" },
   { href: "/reports", icon: BarChart3, label: "Reports" },
 ];
