@@ -62,35 +62,56 @@ export default function TransactionsPage() {
   }, [toast]);
   
   const parseDate = (dateStr: string | undefined): Date => {
-    if (!dateStr) return new Date(0);
+    if (!dateStr || typeof dateStr !== 'string') return new Date(0);
     try {
         // Handles "dd/MM/yyyy HH:mm"
-        return parse(dateStr, 'dd/MM/yyyy HH:mm', new Date());
+        const parsed = parse(dateStr, 'dd/MM/yyyy HH:mm', new Date());
+        if (isNaN(parsed.getTime())) return new Date(0);
+        return parsed;
     } catch(e) {
-        // Fallback for other potential date formats or invalid dates
-        const d = new Date(dateStr);
-        return isNaN(d.getTime()) ? new Date(0) : d;
+        return new Date(0);
     }
   };
 
   const filteredTransactions = useMemo(() => {
+    const lowercasedFilter = searchTerm.toLowerCase();
+
     return transactions
       .filter((transaction) => {
-        // Filter by search term (ID)
-        if (searchTerm && transaction.id && !transaction.id.toLowerCase().includes(searchTerm.toLowerCase())) {
-          return false;
-        }
-        // Filter by date range
+        // Filter by date range first
         if (dateRange?.from && dateRange?.to) {
           const transactionDate = parseDate(transaction.date);
           if (isNaN(transactionDate.getTime())) return false;
+          // Set hours to end of day for 'to' date to include all transactions on that day
+          dateRange.to.setHours(23, 59, 59, 999);
           return transactionDate >= dateRange.from && transactionDate <= dateRange.to;
         }
         return true;
+      })
+      .filter((transaction) => {
+        if (!searchTerm) return true;
+        
+        // Check against multiple fields
+        return (
+          (transaction.id && transaction.id.toLowerCase().includes(lowercasedFilter)) ||
+          (transaction.date && transaction.date.toLowerCase().includes(lowercasedFilter)) ||
+          (transaction.paymentMethod && transaction.paymentMethod.toLowerCase().includes(lowercasedFilter)) ||
+          transaction.total.toString().includes(lowercasedFilter) ||
+          transaction.items.some(item => item.name.toLowerCase().includes(lowercasedFilter))
+        );
       });
   }, [transactions, searchTerm, dateRange]);
 
   const handleExport = () => {
+    if (filteredTransactions.length === 0) {
+        toast({
+            title: "No Data to Export",
+            description: "There are no transactions in the current view to export.",
+            variant: "destructive"
+        });
+        return;
+    }
+
     const dataToExport = filteredTransactions.map(t => ({
         'Transaction ID': t.id,
         'Date': t.date,
@@ -115,7 +136,7 @@ export default function TransactionsPage() {
         <Card>
             <CardHeader>
                 <CardTitle>All Transactions</CardTitle>
-                <CardDescription>A list of all sales recorded in the system. You can filter by date and search by ID.</CardDescription>
+                <CardDescription>A list of all sales recorded in the system. You can filter by date and search by any field.</CardDescription>
             </CardHeader>
             <CardContent>
              <div className="flex items-center gap-4 mb-4">
@@ -123,8 +144,8 @@ export default function TransactionsPage() {
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
-                        placeholder="Search by Transaction ID..."
-                        className="pl-8 sm:w-[300px]"
+                        placeholder="Search transactions..."
+                        className="pl-8 sm:w-[300px] md:w-[400px]"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -185,25 +206,33 @@ export default function TransactionsPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {filteredTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                        <TableCell className="font-mono text-xs">{transaction.id}</TableCell>
-                        <TableCell>{transaction.date}</TableCell>
-                        <TableCell className="text-right font-medium">${transaction.total.toFixed(2)}</TableCell>
-                        <TableCell className="text-center">{transaction.items.length}</TableCell>
-                        <TableCell>
-                            <Badge variant="outline">{transaction.paymentMethod}</Badge>
-                        </TableCell>
-                        <TableCell>
-                            <DialogTrigger asChild>
-                                <Button variant="outline" size="sm" onClick={() => setSelectedTransaction(transaction)}>
-                                    <Receipt className="mr-2 h-4 w-4" />
-                                    View Details
-                                </Button>
-                            </DialogTrigger>
-                        </TableCell>
-                    </TableRow>
-                    ))}
+                    {filteredTransactions.length > 0 ? (
+                        filteredTransactions.map((transaction) => (
+                        <TableRow key={transaction.id}>
+                            <TableCell className="font-mono text-xs">{transaction.id}</TableCell>
+                            <TableCell>{transaction.date}</TableCell>
+                            <TableCell className="text-right font-medium">${transaction.total.toFixed(2)}</TableCell>
+                            <TableCell className="text-center">{transaction.items.reduce((acc, item) => acc + item.quantity, 0)}</TableCell>
+                            <TableCell>
+                                <Badge variant="outline">{transaction.paymentMethod}</Badge>
+                            </TableCell>
+                            <TableCell>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={() => setSelectedTransaction(transaction)}>
+                                        <Receipt className="mr-2 h-4 w-4" />
+                                        View Details
+                                    </Button>
+                                </DialogTrigger>
+                            </TableCell>
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={6} className="h-24 text-center">
+                                No results found.
+                            </TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
                 </Table>
             )}
@@ -217,7 +246,7 @@ export default function TransactionsPage() {
                      <p className="text-sm text-muted-foreground">ID: {selectedTransaction.id}</p>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
                         {selectedTransaction.items.map(item => (
                             <div key={item.id} className="flex justify-between items-center text-sm">
                                 <p>{item.name} <span className="text-muted-foreground">x {item.quantity}</span></p>
@@ -251,11 +280,11 @@ export default function TransactionsPage() {
                              <>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Cash Received</span>
-                                    <span>${selectedTransaction.cashReceived?.toFixed(2)}</span>
+                                    <span>${selectedTransaction.cashReceived?.toFixed(2) || '0.00'}</span>
                                 </div>
                                  <div className="flex justify-between">
                                     <span className="text-muted-foreground">Change</span>
-                                    <span>${selectedTransaction.change?.toFixed(2)}</span>
+                                    <span>${selectedTransaction.change?.toFixed(2) || '0.00'}</span>
                                 </div>
                              </>
                          )}
@@ -267,3 +296,5 @@ export default function TransactionsPage() {
     </DashboardLayout>
   );
 }
+
+    
