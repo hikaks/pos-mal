@@ -29,7 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { suggestProductCategories, type SuggestProductCategoriesOutput } from "@/ai/flows/suggest-product-categories";
+import { suggestProductDescription, type SuggestProductDescriptionOutput } from "@/ai/flows/suggest-product-description";
 import { getCategories } from "@/lib/firebase/categories";
 import {
   Select,
@@ -45,8 +45,9 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isFormOpen, setFormOpen] = useState(false);
   const [isSuggesting, setSuggesting] = useState(false);
-  const [suggestions, setSuggestions] = useState<SuggestProductCategoriesOutput | null>(null);
+  const [suggestedDescription, setSuggestedDescription] = useState<string | null>(null);
   const [productName, setProductName] = useState("");
+  const [productKeywords, setProductKeywords] = useState("");
   const [productDescription, setProductDescription] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const { toast } = useToast();
@@ -69,25 +70,26 @@ export default function ProductsPage() {
   }, [toast]);
 
 
-  const handleSuggestCategories = async () => {
-    if (!productName || !productDescription) {
+  const handleSuggestDescription = async () => {
+    if (!productName) {
       toast({
         title: "Missing Information",
-        description: "Please enter a product name and description first.",
+        description: "Please enter a product name first.",
         variant: "destructive",
       });
       return;
     }
     setSuggesting(true);
-    setSuggestions(null);
+    setSuggestedDescription(null);
     try {
-      const result = await suggestProductCategories({
+      const result = await suggestProductDescription({
         productName,
-        productDescription,
-        recentSalesData: "Wireless Headphones (50 sold), Organic Coffee Beans (120 sold)",
-        trendingProducts: "Home office gadgets, eco-friendly products"
+        keywords: productKeywords,
       });
-      setSuggestions(result);
+      if (result.description) {
+        setProductDescription(result.description);
+        setSuggestedDescription(result.description);
+      }
     } catch (error) {
       console.error(error);
       toast({
@@ -162,10 +164,19 @@ export default function ProductsPage() {
                                     </Select>
                                 </div>
                             </div>
+                            
+                             <div className="space-y-2">
+                                <Label htmlFor="keywords">Keywords for AI</Label>
+                                <Input id="keywords" name="keywords" placeholder="e.g. coffee, home, professional" onChange={e => setProductKeywords(e.target.value)} />
+                            </div>
 
                              <div className="space-y-2">
                                 <Label htmlFor="description">Description</Label>
-                                <Textarea id="description" name="description" placeholder="Describe the product" onChange={e => setProductDescription(e.target.value)} />
+                                <Textarea id="description" name="description" placeholder="Describe the product" value={productDescription} onChange={e => setProductDescription(e.target.value)} />
+                                <Button type="button" variant="outline" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting || !productName}>
+                                    {isSuggesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                                    Suggest Description with AI
+                                </Button>
                             </div>
 
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -177,25 +188,6 @@ export default function ProductsPage() {
                                     <Label htmlFor="stock">Stock</Label>
                                     <Input id="stock" name="stock" type="number" placeholder="e.g. 15" />
                                 </div>
-                            </div>
-                           
-                             <div className="space-y-4">
-                                <Button type="button" variant="outline" size="sm" onClick={handleSuggestCategories} disabled={isSuggesting || !productName || !productDescription}>
-                                    {isSuggesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                                    Suggest Categories with AI
-                                </Button>
-                            
-                                {suggestions && (
-                                    <Card className="bg-muted/50 p-4">
-                                        <p className="text-sm font-medium mb-2">AI Suggestions:</p>
-                                        <div className="flex flex-wrap gap-2 mb-2">
-                                            {suggestions.suggestedCategories.map(cat => (
-                                                <Badge key={cat} variant="secondary" className="cursor-pointer hover:bg-primary/20" onClick={() => setSelectedCategory(cat)}>{cat}</Badge>
-                                            ))}
-                                        </div>
-                                        <p className="text-xs text-muted-foreground italic">{suggestions.reasoning}</p>
-                                    </Card>
-                                )}
                             </div>
                         </div>
                         <DialogFooter>
