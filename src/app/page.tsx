@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -24,8 +24,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
-import { Plus, Minus, Trash2 } from "lucide-react";
-import { mockProducts, type Product } from "@/lib/data";
+import { Plus, Minus, Trash2, Loader2 } from "lucide-react";
+import type { Product } from "@/lib/data";
+import { getProducts } from "@/lib/firebase/products";
+import { addTransaction } from "@/lib/firebase/transactions";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,11 +36,33 @@ interface CartItem extends Product {
 }
 
 export default function POSPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [cashReceived, setCashReceived] = useState(0);
   const [isCheckoutOpen, setCheckoutOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const fetchedProducts = await getProducts();
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+        toast({
+          title: "Error",
+          description: "Could not fetch products from the database.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, [toast]);
 
   const handleAddToCart = (product: Product) => {
     setCart((prevCart) => {
@@ -54,7 +78,7 @@ export default function POSPage() {
     });
   };
 
-  const handleUpdateQuantity = (productId: number, quantity: number) => {
+  const handleUpdateQuantity = (productId: string, quantity: number) => {
     setCart((prevCart) => {
       if (quantity <= 0) {
         return prevCart.filter((item) => item.id !== productId);
@@ -74,7 +98,7 @@ export default function POSPage() {
   const total = subtotal + taxAmount;
   const change = cashReceived > total ? cashReceived - total : 0;
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       toast({
         title: "Empty Cart",
@@ -83,56 +107,80 @@ export default function POSPage() {
       });
       return;
     }
-    console.log("Processing transaction:", {
-      cart,
+    
+    setIsProcessing(true);
+
+    const transactionData = {
+      date: Date.now(),
+      items: cart.map(({ id, name, price, quantity }) => ({ id, name, price, quantity })),
       subtotal,
       taxAmount,
       total,
       paymentMethod,
-    });
-    setCart([]);
-    setCashReceived(0);
-    setCheckoutOpen(false);
-    toast({
-      title: "Transaction Complete",
-      description: "The sale has been successfully processed.",
-    });
+      ...(paymentMethod === 'cash' && { cashReceived, change }),
+    };
+
+    try {
+      await addTransaction(transactionData);
+      toast({
+        title: "Transaction Complete",
+        description: "The sale has been successfully recorded in Firebase.",
+      });
+      setCart([]);
+      setCashReceived(0);
+      setCheckoutOpen(false);
+    } catch (error) {
+      console.error("Failed to save transaction: ", error);
+      toast({
+        title: "Transaction Failed",
+        description: "Could not save the transaction to the database.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
     <DashboardLayout>
       <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
         <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
-            {mockProducts.map((product) => (
-              <Card key={product.id} className="overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                <CardHeader className="p-0">
-                   <Image
-                    alt={product.name}
-                    className="aspect-square w-full rounded-t-lg object-cover"
-                    data-ai-hint="product image"
-                    height="200"
-                    src={product.image}
-                    width="200"
-                  />
-                </CardHeader>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg">{product.name}</h3>
-                  <p className="text-sm text-muted-foreground">{product.category}</p>
-                  <p className="font-bold text-lg mt-2">${product.price.toFixed(2)}</p>
-                </CardContent>
-                <CardFooter className="p-4 pt-0">
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    onClick={() => handleAddToCart(product)}
-                  >
-                    Add to Cart
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+          {isLoadingProducts ? (
+             <div className="flex justify-center items-center h-64 col-span-full">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+              {products.map((product) => (
+                <Card key={product.id} className="overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+                  <CardHeader className="p-0">
+                    <Image
+                      alt={product.name}
+                      className="aspect-square w-full rounded-t-lg object-cover"
+                      data-ai-hint="product image"
+                      height="200"
+                      src={product.image}
+                      width="200"
+                    />
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold text-lg">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground">{product.category}</p>
+                    <p className="font-bold text-lg mt-2">${product.price.toFixed(2)}</p>
+                  </CardContent>
+                  <CardFooter className="p-4 pt-0">
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleAddToCart(product)}
+                    >
+                      Add to Cart
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
         
         <div className="sticky top-16">
@@ -234,7 +282,10 @@ export default function POSPage() {
                     )}
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleCheckout} className="w-full">Confirm Payment</Button>
+                    <Button onClick={handleCheckout} className="w-full" disabled={isProcessing}>
+                      {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Confirm Payment
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

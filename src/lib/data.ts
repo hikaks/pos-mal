@@ -29,6 +29,24 @@ export interface Category {
   name: string;
 }
 
+export interface TransactionDetail {
+  id: string;
+  date: number; // Using timestamp for easy sorting
+  items: {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }[];
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  paymentMethod: string;
+  cashReceived?: number;
+  change?: number;
+}
+
+
 export const mockProducts: Product[] = [
   {
     id: "1",
